@@ -1,3 +1,5 @@
+package org.restler;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,5 +19,9 @@ public interface Greeter {
     String getGreeting(@PathVariable(value = "language") String language,
                        @RequestParam(value = "name", defaultValue = "Anonimous") String name);
 
+    @ResponseBody
+    @RequestMapping("greetings/{language}")
+    String getGreetingWithoutNamesInAnnotations(@PathVariable String language,
+                                                @RequestParam String name);
 }
 

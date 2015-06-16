@@ -2,6 +2,7 @@ import org.junit.Ignore
 import org.restler.Service
 import org.restler.client.CGLibClientFactory
 import org.restler.client.ServiceMethodExecutor
+import org.restler.Greeter
 import spock.lang.Specification
 
 /**
