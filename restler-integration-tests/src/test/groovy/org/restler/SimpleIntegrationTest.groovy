@@ -7,10 +7,14 @@ import org.restler.http.security.authorization.FormAuthorizationStrategy
 import org.restler.integration.Controller
 import org.restler.integration.IntegrationPackage
 import org.restler.util.IntegrationSpec
+import org.restler.integration.springdata.*
+import org.restler.integration.springdata.*
+import org.restler.testserver.springdata.Person
+import org.restler.testserver.springdata.PersonsRepository
 import org.springframework.web.client.RestTemplate
-import spock.lang.Shared
 import spock.lang.Specification
 import spock.util.concurrent.AsyncConditions
+import static org.restler.testserver.springdata.PersonsRepository.*
 
 class SimpleIntegrationTest extends Specification implements IntegrationSpec {
 
@@ -40,10 +44,6 @@ class SimpleIntegrationTest extends Specification implements IntegrationSpec {
 
     def controller = serviceWithFormAuth.produceClient(Controller.class);
     def controllerWithBasicAuth = serviceWithBasicAuth.produceClient(Controller.class);
-
-    def @Shared
-            server = IntegrationPackage.server()
-
 
     def "test unsecured get"() {
         expect:
@@ -107,18 +107,35 @@ class SimpleIntegrationTest extends Specification implements IntegrationSpec {
         response == "Secure OK"
     }
 
-    def "test exception CGLibClient when class not a controller"() {
-        when:
-        serviceWithFormAuth.produceClient(CGLibClientFactory.class)
-        then:
-        thrown(IllegalArgumentException)
-    }
-
     def "test exception CookieAuthenticationRequestExecutor when cookie name is empty"() {
         when:
         new CookieAuthenticationStrategy("");
         then:
         thrown(IllegalArgumentException)
+    }
+
+    def "test PersonRepository findOne"() {
+        expect:
+        PersonsRepository personRepository = serviceWithFormAuth.produceClient(PersonsRepository.class)
+        Person person = personRepository.findOne("0")
+        person.getId() == "0"
+        person.getName() == "test name"
+    }
+
+    def "test query method PersonRepository findById"() {
+        expect:
+        PersonsRepository personRepository = serviceWithFormAuth.produceClient(PersonsRepository.class)
+        Person person = personRepository.findById("0")
+        person.getId() == "0"
+        person.getName() == "test name"
+    }
+
+    def "test query method PersonRepository findByName"() {
+        expect:
+        PersonsRepository personRepository = serviceWithFormAuth.produceClient(PersonsRepository.class)
+        List<Person> persons = personRepository.findByName("test name")
+        persons[0].getId() == "0"
+        persons[0].getName() == "test name"
     }
 
 }

@@ -19,14 +19,13 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Maps a properly annotated Java method invocation to invocation of a service method.
  */
-public class ControllerMethodInvocationMapper implements BiFunction<Method, Object[], ServiceMethodInvocation<?>> {
+public class ControllerMethodInvocationMapper implements InvocationMapper {
 
     private static final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
     private static final Pattern pathVariablesPattern = Pattern.compile("\\{([-a-zA-Z0-9@:%_\\+.~#?&/=]*)\\}");
@@ -40,7 +39,7 @@ public class ControllerMethodInvocationMapper implements BiFunction<Method, Obje
     }
 
     @Override
-    public ServiceMethodInvocation<?> apply(Method method, Object[] args) {
+    public ServiceMethodInvocation<?> apply(Object o, Method method, Object[] args) {
         Object requestBody = null;
         Map<String, Object> pathVariables = new HashMap<>();
         MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
@@ -60,7 +59,7 @@ public class ControllerMethodInvocationMapper implements BiFunction<Method, Obje
                     if (StringUtils.isEmpty(pathVariableName))
                         throw new RuntimeException("Name of a path variable can't be resolved during the method " + method + " call");
 
-                    pathVariables.put(pathVariableName, resolver.resolve(pi).orElseGet(() -> null));
+                    pathVariables.put(pathVariableName, resolver.resolve(pi).orElseGet(() -> "null"));
 
                 } else if (annotation instanceof RequestParam) {
 
@@ -117,15 +116,15 @@ public class ControllerMethodInvocationMapper implements BiFunction<Method, Obje
 
         String uriTemplate = UriComponentsBuilder.fromUriString("/").pathSegment(getMappedUriString(controllerMapping), getMappedUriString(methodMapping)).build().toUriString();
 
-        Class<?> resultType = method.getReturnType();
-        Type returnType = method.getGenericReturnType();
+        Class<?> returnType = method.getReturnType();
+        Type genericReturnType = method.getGenericReturnType();
 
-        if (resultType == DeferredResult.class || resultType == Callable.class) {
-            ParameterizedType parameterizedType = (ParameterizedType) returnType;
-            returnType = parameterizedType.getActualTypeArguments()[0];
+        if (returnType == DeferredResult.class || returnType == Callable.class) {
+            ParameterizedType parameterizedType = (ParameterizedType) genericReturnType;
+            genericReturnType = parameterizedType.getActualTypeArguments()[0];
         }
 
-        return new ServiceMethod<>(uriTemplate, returnType, httpMethod, expectedStatus);
+        return new ServiceMethod<>(uriTemplate, returnType, genericReturnType, httpMethod, expectedStatus);
     }
 
     private List<String> unusedPathVariables(Map<String, Object> pathVariables, String uriTemplate) {
@@ -183,4 +182,3 @@ public class ControllerMethodInvocationMapper implements BiFunction<Method, Obje
         }
     }
 }
-

@@ -2,15 +2,18 @@ package org.restler.client;
 
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.InvocationHandler;
+import org.springframework.data.repository.Repository;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -20,16 +23,21 @@ import java.util.function.Function;
 public class CGLibClientFactory implements ClientFactory {
 
     private final ServiceMethodInvocationExecutor executor;
-    private final BiFunction<Method, Object[], ServiceMethodInvocation<?>> invocationMapper;
+    private final InvocationMapper controllerInvocationMapper;
+    private final InvocationMapper repositoryInvocationMapper;
 
     private final Executor threadExecutor;
 
     private final HashMap<Class<?>, Function<ServiceMethodInvocation<?>, ?>> invocationExecutors;
     private final Function<ServiceMethodInvocation<?>, ?> defaultInvocationExecutor;
 
-    public CGLibClientFactory(ServiceMethodInvocationExecutor executor, BiFunction<Method, Object[], ServiceMethodInvocation<?>> invocationMapper, Executor threadExecutor) {
+    public CGLibClientFactory(ServiceMethodInvocationExecutor executor, InvocationMapper controllerInvocationMapper,
+                              InvocationMapper repositoryInvocationMapper, Executor threadExecutor) {
         this.executor = executor;
-        this.invocationMapper = invocationMapper;
+
+        this.repositoryInvocationMapper = repositoryInvocationMapper;
+        this.controllerInvocationMapper = controllerInvocationMapper;
+
         this.threadExecutor = threadExecutor;
 
         invocationExecutors = new HashMap<>();
@@ -40,16 +48,28 @@ public class CGLibClientFactory implements ClientFactory {
     }
 
     @Override
-    public <C> C produceClient(Class<C> controllerClass) {
+    public <C> C produceClient(Class<C> controllerOrRepositoryClass) {
 
-        if (controllerClass.getDeclaredAnnotation(Controller.class) == null && controllerClass.getDeclaredAnnotation(RestController.class) == null) {
-            throw new IllegalArgumentException("Not a controller");
+        Controller controllerAnnotation = controllerOrRepositoryClass.getDeclaredAnnotation(Controller.class);
+        RestController restControllerAnnotation = controllerOrRepositoryClass.getDeclaredAnnotation(RestController.class);
+
+        boolean isRepository = isRepository(controllerOrRepositoryClass);
+        boolean isController = controllerAnnotation != null || restControllerAnnotation != null;
+
+        if (!isController && !isRepository) {
+            throw new IllegalArgumentException("Not a controller or a repository");
         }
 
-        InvocationHandler handler = new ControllerMethodInvocationHandler();
+        InvocationHandler handler = null;
+
+        if (isRepository) {
+            handler = new RepositoryMethodInvocationHandler();
+        } else if (isController) {
+            handler = new ControllerMethodInvocationHandler();
+        }
 
         Enhancer enhancer = new Enhancer();
-        enhancer.setSuperclass(controllerClass);
+        enhancer.setSuperclass(controllerOrRepositoryClass);
         enhancer.setCallback(handler);
 
         return (C) enhancer.create();
@@ -63,11 +83,39 @@ public class CGLibClientFactory implements ClientFactory {
         return invocationExecutor;
     }
 
+    private boolean isRepository(Class<?> someClass) {
+        if (someClass.isInterface()) {
+
+            if (someClass == Repository.class) {
+                return true;
+            }
+
+            Class<?>[] interfaces = someClass.getInterfaces();
+
+            for (Class<?> interf : interfaces) {
+                if (isRepository(interf)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private class ControllerMethodInvocationHandler implements InvocationHandler {
 
         @Override
         public Object invoke(Object o, Method method, Object[] args) throws Throwable {
-            ServiceMethodInvocation<?> invocation = invocationMapper.apply(method, args);
+            ServiceMethodInvocation<?> invocation = controllerInvocationMapper.apply(o, method, args);
+
+            return getInvocationExecutor(method).apply(invocation);
+        }
+    }
+
+    private class RepositoryMethodInvocationHandler implements InvocationHandler {
+
+        @Override
+        public Object invoke(Object o, Method method, Object[] args) throws Throwable {
+            ServiceMethodInvocation<?> invocation = repositoryInvocationMapper.apply(o, method, args);
 
             return getInvocationExecutor(method).apply(invocation);
         }

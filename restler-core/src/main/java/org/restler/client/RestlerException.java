@@ -9,4 +9,8 @@ public class RestlerException extends RuntimeException {
     public RestlerException(String message) {
         super(message);
     }
+
+    public RestlerException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

@@ -13,13 +13,15 @@ import java.lang.reflect.Type;
 public class ServiceMethod<T> {
 
     private final String uriTemplate;
-    private final Type returnType;
+    private final Class<T> returnType;
+    private final Type genericReturnType;
     private final HttpMethod httpMethod;
     private final HttpStatus expectedHttpResponseStatus;
 
-    public ServiceMethod(String uriTemplate, Type returnType, HttpMethod httpMethod, HttpStatus expectedHttpResponseStatus) {
+    public ServiceMethod(String uriTemplate, Class<T> returnType, Type genericReturnType, HttpMethod httpMethod, HttpStatus expectedHttpResponseStatus) {
         this.uriTemplate = uriTemplate;
         this.returnType = returnType;
+        this.genericReturnType = genericReturnType;
         this.httpMethod = httpMethod;
         this.expectedHttpResponseStatus = expectedHttpResponseStatus;
     }
@@ -33,13 +35,17 @@ public class ServiceMethod<T> {
         return uriTemplate;
     }
 
+    public Class<T> getReturnType() {
+        return returnType;
+    }
+
     /**
      * Provides the return type of the method
      *
      * @return a type object
      */
-    public Type getReturnType() {
-        return returnType;
+    public Type getGenericReturnType() {
+        return genericReturnType;
     }
 
     /**

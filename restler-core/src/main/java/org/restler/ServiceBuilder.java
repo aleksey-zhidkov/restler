@@ -34,6 +34,7 @@ public class ServiceBuilder {
     private ParameterResolver paramResolver = ParameterResolver.valueOfParamResolver();
     private Optional<Executor> threadExecutor = Optional.empty();
     private Optional<RequestExecutor> requestExecutor = Optional.empty();
+    private RequestExecutor executor = new SpringDataRestOperationsExecutor(new RestOperationsExecutor(new RestTemplate()));
     private RequestExecutionAdvice errorMapper = null;
 
     private AuthenticationStrategy authenticationStrategy;
@@ -147,7 +148,7 @@ public class ServiceBuilder {
 
         ControllerMethodInvocationMapper invocationMapper = new ControllerMethodInvocationMapper(uriBuilder.build(), paramResolver);
         HttpServiceMethodInvocationExecutor executor = new HttpServiceMethodInvocationExecutor(chain);
-        CachingClientFactory factory = new CachingClientFactory(new CGLibClientFactory(executor, invocationMapper, threadExecutor.orElseGet(Executors::newCachedThreadPool)));
+        CachingClientFactory factory = new CachingClientFactory(new CGLibClientFactory(executor, invocationMapper, new RepositoryMethodInvocationMapper(uriBuilder.build()), threadExecutor.orElseGet(Executors::newCachedThreadPool)));
 
         return new Service(factory, session);
     }

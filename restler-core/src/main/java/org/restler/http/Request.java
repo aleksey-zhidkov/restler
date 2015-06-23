@@ -17,18 +17,20 @@ public class Request<T> {
     private final HttpMethod httpMethod;
     private final URI url;
     private final Object body;
-    private final Type returnType;
+    private final Class<T> returnType;
+    private final Type genericReturnType;
     private final MultiValueMap<String, String> headers;
 
-    public Request(URI url, HttpMethod httpMethod, Object body, Type returnType) {
-        this(url, httpMethod, new LinkedMultiValueMap<>(), body, returnType);
+    public Request(URI url, HttpMethod httpMethod, Object body, Class<T> returnType, Type genericReturnType) {
+        this(url, httpMethod, new LinkedMultiValueMap<>(), body, returnType, genericReturnType);
     }
 
-    public Request(URI url, HttpMethod httpMethod, MultiValueMap<String, String> headers, Object body, Type returnType) {
+    public Request(URI url, HttpMethod httpMethod, MultiValueMap<String, String> headers, Object body, Class<T> returnType, Type genericReturnType) {
         this.url = url;
         this.httpMethod = httpMethod;
         this.body = body;
         this.returnType = returnType;
+        this.genericReturnType = genericReturnType;
         this.headers = headers;
     }
 
@@ -37,13 +39,17 @@ public class Request<T> {
         return new RequestEntity<>(body, headers, httpMethod, url);
     }
 
-    public Type getReturnType() {
+    public Class getReturnType() {
         return returnType;
+    }
+
+    public Type getGenericReturnType() {
+        return genericReturnType;
     }
 
     public Request<T> setHeader(String name, String... values) {
         MultiValueMap<String, String> newHeaders = new LinkedMultiValueMap<>(headers);
         Arrays.stream(values).forEach(value -> newHeaders.set(name, value));
-        return new Request<>(url, httpMethod, newHeaders, body, returnType);
+        return new Request<>(url, httpMethod, newHeaders, body, returnType, genericReturnType);
     }
 }

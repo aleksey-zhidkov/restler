@@ -9,7 +9,7 @@ class HeaderBasedAuthenticationStrategySpec extends Specification {
     def "HeaderBasedAuthenticationStrategy should support multiple headers"() {
         given:
         def auth = new TestAuthStrategy()
-        def req = new Request(URI.create("http://localhost"), HttpMethod.GET, null, null)
+        def req = new Request(URI.create("http://localhost"), HttpMethod.GET, null, null, null)
 
         when:
         def authReq = auth.authenticate(req, null)

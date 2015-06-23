@@ -13,21 +13,20 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RestOperationsRequestExecutor implements RequestExecutor {
+public class RestOperationsExecutor implements RequestExecutor {
 
     private final RestTemplate restTemplate;
 
-    public RestOperationsRequestExecutor(RestTemplate restTemplate) {
+    public RestOperationsExecutor(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
         restTemplate.getMessageConverters().add(new BodySavingMessageConverter());
     }
 
-    public <T> ResponseEntity<T> execute(Request<T> request) {
-        RequestEntity<?> requestEntity = request.toRequestEntity();
+    public <T> ResponseEntity<T> execute(Request<T> executableRequest) {
+        RequestEntity<?> requestEntity = executableRequest.toRequestEntity();
         return restTemplate.exchange(requestEntity, new ParameterizedTypeReference<T>() {
-            @Override
-            public Type getType() {
-                return request.getGenericReturnType();
+            @Override public Type getType() {
+                return executableRequest.getGenericReturnType();
             }
         });
     }

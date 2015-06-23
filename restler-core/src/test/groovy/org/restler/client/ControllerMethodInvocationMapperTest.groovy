@@ -13,7 +13,7 @@ class ControllerMethodInvocationMapperTest extends Specification {
         def method = Greeter.class.getDeclaredMethod("getGreeting", [String.class, String.class] as Class[])
 
         when:
-        def invocation = mapper.apply(method, null, null)
+        def invocation = mapper.apply(null, method, [null, null] as Object[])
 
         then:
         invocation.pathVariables['language'] == "null"
