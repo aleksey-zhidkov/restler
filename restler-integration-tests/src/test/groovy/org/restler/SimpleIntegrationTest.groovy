@@ -1,20 +1,15 @@
 package org.restler
 
-import org.restler.client.CGLibClientFactory
 import org.restler.http.RestOperationsRequestExecutor
 import org.restler.http.security.authentication.CookieAuthenticationStrategy
 import org.restler.http.security.authorization.FormAuthorizationStrategy
 import org.restler.integration.Controller
-import org.restler.integration.IntegrationPackage
+import org.restler.integration.springdata.Person
+import org.restler.integration.springdata.PersonsRepository
 import org.restler.util.IntegrationSpec
-import org.restler.integration.springdata.*
-import org.restler.integration.springdata.*
-import org.restler.testserver.springdata.Person
-import org.restler.testserver.springdata.PersonsRepository
 import org.springframework.web.client.RestTemplate
 import spock.lang.Specification
 import spock.util.concurrent.AsyncConditions
-import static org.restler.testserver.springdata.PersonsRepository.*
 
 class SimpleIntegrationTest extends Specification implements IntegrationSpec {
 

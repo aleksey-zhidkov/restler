@@ -1,4 +1,4 @@
-package org.restler.testserver.springdata
+package org.restler.integration.springdata
 
 import java.io.Serializable
 import javax.persistence.Column
