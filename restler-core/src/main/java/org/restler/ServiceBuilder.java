@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -34,7 +35,6 @@ public class ServiceBuilder {
     private ParameterResolver paramResolver = ParameterResolver.valueOfParamResolver();
     private Optional<Executor> threadExecutor = Optional.empty();
     private Optional<RequestExecutor> requestExecutor = Optional.empty();
-    private RequestExecutor executor = new SpringDataRestOperationsExecutor(new RestOperationsExecutor(new RestTemplate()));
     private RequestExecutionAdvice errorMapper = null;
 
     private AuthenticationStrategy authenticationStrategy;
@@ -144,11 +144,14 @@ public class ServiceBuilder {
             advices.add(errorMapper);
         }
 
-        RequestExecutionChain chain = new RequestExecutionChain(requestExecutor.orElseGet(this::defaultRequestExecutor), advices);
+        RequestExecutionChain sMvcChain = new RequestExecutionChain(requestExecutor.orElseGet(() -> defaultRequestExecutor(RestOperationsRequestExecutor::new)), advices);
+        RequestExecutionChain sdrChain = new RequestExecutionChain(requestExecutor.orElseGet(() -> defaultRequestExecutor(SpringDataRestOperationsExecutor::new)), advices);
 
-        ControllerMethodInvocationMapper invocationMapper = new ControllerMethodInvocationMapper(uriBuilder.build(), paramResolver);
-        HttpServiceMethodInvocationExecutor executor = new HttpServiceMethodInvocationExecutor(chain);
-        CachingClientFactory factory = new CachingClientFactory(new CGLibClientFactory(executor, invocationMapper, new RepositoryMethodInvocationMapper(uriBuilder.build()), threadExecutor.orElseGet(Executors::newCachedThreadPool)));
+        SMvcMethodInvocationMapper invocationMapper = new SMvcMethodInvocationMapper(uriBuilder.build(), paramResolver);
+        SdrMethodInvocationMapper sdrInvocationMapper = new SdrMethodInvocationMapper(uriBuilder.build());
+        HttpServiceMethodInvocationExecutor sMvcExecutor = new HttpServiceMethodInvocationExecutor(sMvcChain);
+        HttpServiceMethodInvocationExecutor sdrExecutor = new HttpServiceMethodInvocationExecutor(sdrChain);
+        CachingClientFactory factory = new CachingClientFactory(new CGLibClientFactory(sMvcExecutor, sdrExecutor, invocationMapper, sdrInvocationMapper, threadExecutor.orElseGet(Executors::newCachedThreadPool)));
 
         return new Service(factory, session);
     }
@@ -162,7 +165,7 @@ public class ServiceBuilder {
         }
     }
 
-    private RestOperationsRequestExecutor defaultRequestExecutor() {
+    private RequestExecutor defaultRequestExecutor(Function<RestTemplate, RequestExecutor> requestExecutor) {
         RestTemplate restTemplate = new RestTemplate();
 
         List<MappingJackson2HttpMessageConverter> jacksonConverters = restTemplate.getMessageConverters().stream().
@@ -173,7 +176,7 @@ public class ServiceBuilder {
         jacksonModules.stream().forEach(module ->
                 jacksonConverters.forEach(converter ->
                         converter.getObjectMapper().registerModule(module)));
-        return new RestOperationsRequestExecutor(restTemplate);
+        return requestExecutor.apply(restTemplate);
     }
 
 }

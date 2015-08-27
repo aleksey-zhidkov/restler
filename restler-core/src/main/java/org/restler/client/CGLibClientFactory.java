@@ -7,11 +7,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -22,7 +19,8 @@ import java.util.function.Function;
 @SuppressWarnings("unchecked")
 public class CGLibClientFactory implements ClientFactory {
 
-    private final ServiceMethodInvocationExecutor executor;
+    private final ServiceMethodInvocationExecutor sMvcExecutor;
+    private final ServiceMethodInvocationExecutor sdrExecutor;
     private final InvocationMapper controllerInvocationMapper;
     private final InvocationMapper repositoryInvocationMapper;
 
@@ -31,9 +29,10 @@ public class CGLibClientFactory implements ClientFactory {
     private final HashMap<Class<?>, Function<ServiceMethodInvocation<?>, ?>> invocationExecutors;
     private final Function<ServiceMethodInvocation<?>, ?> defaultInvocationExecutor;
 
-    public CGLibClientFactory(ServiceMethodInvocationExecutor executor, InvocationMapper controllerInvocationMapper,
+    public CGLibClientFactory(ServiceMethodInvocationExecutor sMvcExecutor, ServiceMethodInvocationExecutor sdrExecutor, InvocationMapper controllerInvocationMapper,
                               InvocationMapper repositoryInvocationMapper, Executor threadExecutor) {
-        this.executor = executor;
+        this.sMvcExecutor = sMvcExecutor;
+        this.sdrExecutor = sdrExecutor;
 
         this.repositoryInvocationMapper = repositoryInvocationMapper;
         this.controllerInvocationMapper = controllerInvocationMapper;
@@ -44,7 +43,7 @@ public class CGLibClientFactory implements ClientFactory {
         invocationExecutors.put(DeferredResult.class, new DeferredResultInvocationExecutor());
         invocationExecutors.put(Callable.class, new CallableResultInvocationExecutor());
 
-        defaultInvocationExecutor = executor::execute;
+        defaultInvocationExecutor = sMvcExecutor::execute;
     }
 
     @Override
@@ -60,11 +59,10 @@ public class CGLibClientFactory implements ClientFactory {
             throw new IllegalArgumentException("Not a controller or a repository");
         }
 
-        InvocationHandler handler = null;
-
+        InvocationHandler handler;
         if (isRepository) {
             handler = new RepositoryMethodInvocationHandler();
-        } else if (isController) {
+        } else {
             handler = new ControllerMethodInvocationHandler();
         }
 
@@ -116,8 +114,7 @@ public class CGLibClientFactory implements ClientFactory {
         @Override
         public Object invoke(Object o, Method method, Object[] args) throws Throwable {
             ServiceMethodInvocation<?> invocation = repositoryInvocationMapper.apply(o, method, args);
-
-            return getInvocationExecutor(method).apply(invocation);
+            return sdrExecutor.execute(invocation);
         }
     }
 
@@ -126,7 +123,7 @@ public class CGLibClientFactory implements ClientFactory {
         @Override
         public DeferredResult apply(ServiceMethodInvocation<?> serviceMethodInvocation) {
             DeferredResult deferredResult = new DeferredResult();
-            threadExecutor.execute(() -> deferredResult.setResult(executor.execute(serviceMethodInvocation)));
+            threadExecutor.execute(() -> deferredResult.setResult(sMvcExecutor.execute(serviceMethodInvocation)));
             return deferredResult;
         }
     }
@@ -135,7 +132,7 @@ public class CGLibClientFactory implements ClientFactory {
 
         @Override
         public Callable<?> apply(ServiceMethodInvocation<?> serviceMethodInvocation) {
-            return () -> executor.execute(serviceMethodInvocation);
+            return () -> sMvcExecutor.execute(serviceMethodInvocation);
         }
     }
 }

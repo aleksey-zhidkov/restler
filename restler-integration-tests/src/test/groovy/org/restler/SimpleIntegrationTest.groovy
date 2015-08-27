@@ -4,8 +4,6 @@ import org.restler.http.RestOperationsRequestExecutor
 import org.restler.http.security.authentication.CookieAuthenticationStrategy
 import org.restler.http.security.authorization.FormAuthorizationStrategy
 import org.restler.integration.Controller
-import org.restler.integration.springdata.Person
-import org.restler.integration.springdata.PersonsRepository
 import org.restler.util.IntegrationSpec
 import org.springframework.web.client.RestTemplate
 import spock.lang.Specification
@@ -107,30 +105,6 @@ class SimpleIntegrationTest extends Specification implements IntegrationSpec {
         new CookieAuthenticationStrategy("");
         then:
         thrown(IllegalArgumentException)
-    }
-
-    def "test PersonRepository findOne"() {
-        expect:
-        PersonsRepository personRepository = serviceWithFormAuth.produceClient(PersonsRepository.class)
-        Person person = personRepository.findOne("0")
-        person.getId() == "0"
-        person.getName() == "test name"
-    }
-
-    def "test query method PersonRepository findById"() {
-        expect:
-        PersonsRepository personRepository = serviceWithFormAuth.produceClient(PersonsRepository.class)
-        Person person = personRepository.findById("0")
-        person.getId() == "0"
-        person.getName() == "test name"
-    }
-
-    def "test query method PersonRepository findByName"() {
-        expect:
-        PersonsRepository personRepository = serviceWithFormAuth.produceClient(PersonsRepository.class)
-        List<Person> persons = personRepository.findByName("test name")
-        persons[0].getId() == "0"
-        persons[0].getName() == "test name"
     }
 
 }

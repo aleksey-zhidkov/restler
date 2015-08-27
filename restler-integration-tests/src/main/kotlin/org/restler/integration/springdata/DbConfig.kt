@@ -22,7 +22,8 @@ open class DbConfig {
         val populator = ResourceDatabasePopulator()
 
         val schema = ByteArrayResource("CREATE TABLE Persons(id INT PRIMARY KEY, firstName VARCHAR(255), lastName VARCHAR(255));".toByteArray("UTF-8"))
-        val data = ByteArrayResource("INSERT INTO person (id, name) VALUES ('0', 'test name');".toByteArray("UTF-8"))
+        val data = ByteArrayResource("""INSERT INTO person (id, name) VALUES ('0', 'test name');
+                                        INSERT INTO person (id, name) VALUES ('1', 'test name');""".toByteArray("UTF-8"))
 
         populator.addScript(schema)
         populator.addScript(data)

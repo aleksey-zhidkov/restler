@@ -12,36 +12,35 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-public class RepositoryMethodInvocationMapper implements InvocationMapper {
+public class SdrMethodInvocationMapper implements InvocationMapper {
 
     private static final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
     private final URI baseUrl;
 
-    public RepositoryMethodInvocationMapper(URI baseUrl) {
+    public SdrMethodInvocationMapper(URI baseUrl) {
         this.baseUrl = baseUrl;
     }
 
     @Override
     public ServiceMethodInvocation<?> apply(Object o, Method method, Object[] args) {
-        ServiceMethod<?> description = getDescription(o, method);
-        Object requestBody = null;
-        Map<String, Object> pathVariables = new HashMap();
-        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap();
-
+        SpringDataRestServiceMethod<?> description = getDescription(o, method);
+        Map<String, Object> pathVariables = new HashMap<>();
+        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
 
         Annotation[][] parametersAnnotations = method.getParameterAnnotations();
         String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
 
+        Set<Object> unmappedArgs = new HashSet<>(Arrays.asList(args));
         for (int pi = 0; pi < parametersAnnotations.length; pi++) {
             for (int ai = 0; ai < parametersAnnotations[pi].length; ai++) {
                 Annotation annotation = parametersAnnotations[pi][ai];
@@ -53,14 +52,22 @@ public class RepositoryMethodInvocationMapper implements InvocationMapper {
                         throw new RuntimeException("Name of a path variable can't be resolved during the method " + method + " call");
 
                     requestParams.add(pathVariableName, args[pi].toString());
+                    unmappedArgs.remove(args[pi]);
                 }
             }
         }
 
-        return new ServiceMethodInvocation<>(baseUrl, description, requestBody, pathVariables, requestParams);
+        for (Object unmappedArg : unmappedArgs) {
+            // TODO: implement more generic solution
+            if (description.getIdClass().isAssignableFrom(unmappedArg.getClass())) {
+                pathVariables.put("id", unmappedArg);
+            }
+        }
+
+        return new ServiceMethodInvocation<>(baseUrl, description, null, pathVariables, requestParams);
     }
 
-    private ServiceMethod<?> getDescription(Object o, Method method) {
+    private SpringDataRestServiceMethod<?> getDescription(Object o, Method method) {
 
         RepositoryRestResource repositoryAnnotation = o.getClass().getInterfaces()[0].getDeclaredAnnotation(RepositoryRestResource.class);
         RestResource methodAnnotation = method.getDeclaredAnnotation(RestResource.class);
@@ -68,22 +75,33 @@ public class RepositoryMethodInvocationMapper implements InvocationMapper {
         String methodMappedUriString;
         HttpMethod httpMethod;
 
+        Class repositoryType = (Class) o.getClass().getMethods()[0].getDeclaringClass().getGenericInterfaces()[0];
+        ParameterizedTypeImpl crudRepositoryType = (ParameterizedTypeImpl) repositoryType.getGenericInterfaces()[0];
+        Type entityType = crudRepositoryType.getActualTypeArguments()[0];
+        Type idType = crudRepositoryType.getActualTypeArguments()[1];
+
+        Class<?> returnType;
+        Type genericReturnType;
         if (isCrudMethod(method)) {
-            /*methodMappedUriString = "";
-            httpMethod = HttpMethod.GET;*/
-            throw new UnsupportedOperationException("Crud methods not supported");
+            methodMappedUriString = getCrudMethodPath(method);
+            httpMethod = HttpMethod.GET;
+            genericReturnType = crudRepositoryType.getActualTypeArguments()[0];
+            try {
+                returnType = Class.forName(genericReturnType.getTypeName());
+            } catch (ClassNotFoundException e) {
+                throw new RestlerException("", e);
+            }
         } else {
             methodMappedUriString = getQueryMethodUri(method, methodAnnotation);
             httpMethod = HttpMethod.GET;
+            returnType = method.getReturnType();
+            genericReturnType = method.getGenericReturnType();
         }
 
         String uriTemplate = UriComponentsBuilder.fromUriString("/").pathSegment(getRepositoryUri(o, repositoryAnnotation), methodMappedUriString).build().toUriString();
 
-        Class<?> returnType = method.getReturnType();
 
-        HttpStatus expectedStatus = HttpStatus.OK;
-
-        return new ServiceMethod<>(uriTemplate, returnType, method.getGenericReturnType(), httpMethod, expectedStatus);
+        return new SpringDataRestServiceMethod<>(uriTemplate, returnType, genericReturnType, httpMethod, HttpStatus.OK, idType, entityType);
     }
 
     private String getRepositoryUri(Object o, RepositoryRestResource repositoryAnnotation) {
@@ -101,6 +119,13 @@ public class RepositoryMethodInvocationMapper implements InvocationMapper {
         }
 
         return repositoryUriString;
+    }
+
+    private String getCrudMethodPath(Method method) {
+        if ("findOne".equals(method.getName())) {
+            return "/{id}";
+        }
+        throw new RestlerException("Method " + method + " is not supported");
     }
 
     private String getQueryMethodUri(Method method, RestResource methodAnnotation) {

@@ -3,13 +3,13 @@ package org.restler.client
 import org.restler.test.Greeter
 import spock.lang.Specification
 
-class ControllerMethodInvocationMapperTest extends Specification {
+class SMvcMethodInvocationMapperTest extends Specification {
 
     def anyUri = null
 
     def "Controller method invocation mapper should correctly process null arguments"() {
         given:
-        def mapper = new ControllerMethodInvocationMapper(anyUri, ParameterResolver.valueOfParamResolver())
+        def mapper = new SMvcMethodInvocationMapper(anyUri, ParameterResolver.valueOfParamResolver())
         def method = Greeter.class.getDeclaredMethod("getGreeting", [String.class, String.class] as Class[])
 
         when:

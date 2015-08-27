@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 /**
  * Maps a properly annotated Java method invocation to invocation of a service method.
  */
-public class ControllerMethodInvocationMapper implements InvocationMapper {
+public class SMvcMethodInvocationMapper implements InvocationMapper {
 
     private static final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
     private static final Pattern pathVariablesPattern = Pattern.compile("\\{([-a-zA-Z0-9@:%_\\+.~#?&/=]*)\\}");
@@ -33,7 +33,7 @@ public class ControllerMethodInvocationMapper implements InvocationMapper {
     private final URI baseUrl;
     private final ParameterResolver paramResolver;
 
-    public ControllerMethodInvocationMapper(URI baseUrl, ParameterResolver paramResolver) {
+    public SMvcMethodInvocationMapper(URI baseUrl, ParameterResolver paramResolver) {
         this.baseUrl = baseUrl;
         this.paramResolver = paramResolver;
     }
