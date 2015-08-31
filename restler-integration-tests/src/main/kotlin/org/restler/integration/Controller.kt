@@ -1,5 +1,7 @@
 package org.restler.integration
 
+import org.restler.integration.springdata.PersonsRepository
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.context.request.async.DeferredResult
@@ -10,7 +12,7 @@ import javax.servlet.http.HttpServletRequest
 import kotlin.concurrent.thread
 
 RestController
-public open class Controller {
+public open class Controller @Autowired constructor(private val personsRepo: PersonsRepository) {
 
     RequestMapping("get")
     open fun publicGet() = "OK"
@@ -83,4 +85,7 @@ public open class Controller {
 
     RequestMapping("isNull")
     open fun isNull(@RequestParam(required = false) str: String?) = str identityEquals null
+
+    RequestMapping("getPerson")
+    open fun getPerson() = personsRepo.findById(java.lang.String("0"))
 }

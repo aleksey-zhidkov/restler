@@ -8,6 +8,7 @@ import org.eclipse.jetty.servlet.FilterHolder
 import org.eclipse.jetty.servlet.ServletContextHandler
 import org.eclipse.jetty.servlet.ServletHolder
 import org.restler.integration.security.SecurityConfig
+import org.restler.integration.springdata.PersonsRepository
 import org.restler.integration.springdata.SpringDataRestConfig
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
@@ -33,7 +34,7 @@ open class WebConfig : WebMvcConfigurerAdapter() {
         }
     }
 
-    @Bean open fun controller() = Controller()
+    @Bean open fun controller(personsRepo: PersonsRepository) = Controller(personsRepo)
 
 }
 
